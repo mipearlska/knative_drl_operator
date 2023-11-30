@@ -1,0 +1,31 @@
+# permissions for end users to edit drlscaleactions.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: drlscaleaction-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: knative-drl-operator
+    app.kubernetes.io/part-of: knative-drl-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: drlscaleaction-editor-role
+rules:
+- apiGroups:
+  - drlscaling.knativescaling.dcn.ssu.ac.kr
+  resources:
+  - drlscaleactions
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - drlscaling.knativescaling.dcn.ssu.ac.kr
+  resources:
+  - drlscaleactions/status
+  verbs:
+  - get

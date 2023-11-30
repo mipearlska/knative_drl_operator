@@ -1,0 +1,12 @@
+apiVersion: drlscaling.knativescaling.dcn.ssu.ac.kr/v1
+kind: DRLScaleAction
+metadata:
+  labels:
+    app.kubernetes.io/name: drlscaleaction
+    app.kubernetes.io/instance: drlscaleaction-sample
+    app.kubernetes.io/part-of: knative-drl-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: knative-drl-operator
+  name: drlscaleaction-sample
+spec:
+  # TODO(user): Add fields here

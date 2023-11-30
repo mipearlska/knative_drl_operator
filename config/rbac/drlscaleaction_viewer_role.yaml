@@ -1,0 +1,27 @@
+# permissions for end users to view drlscaleactions.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: drlscaleaction-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: knative-drl-operator
+    app.kubernetes.io/part-of: knative-drl-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: drlscaleaction-viewer-role
+rules:
+- apiGroups:
+  - drlscaling.knativescaling.dcn.ssu.ac.kr
+  resources:
+  - drlscaleactions
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - drlscaling.knativescaling.dcn.ssu.ac.kr
+  resources:
+  - drlscaleactions/status
+  verbs:
+  - get
