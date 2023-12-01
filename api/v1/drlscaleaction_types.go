@@ -29,7 +29,16 @@ type DRLScaleActionSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of DRLScaleAction. Edit drlscaleaction_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	ServiceHouse_Resource    string `json:"servicehouse_resource,omitempty"`
+	ServiceHouse_Concurrency string `json:"servicehouse_concurrency,omitempty"`
+	ServiceHouse_Podcount    string `json:"servicehouse_podcount,omitempty"`
+	ServiceSenti_Resource    string `json:"servicesenti_resource,omitempty"`
+	ServiceSenti_Concurrency string `json:"servicesenti_concurrency,omitempty"`
+	ServiceSenti_Podcount    string `json:"sservicesenti_podcount,omitempty"`
+	ServiceNumbr_Resource    string `json:"servicenumbr_resource,omitempty"`
+	ServiceNumbr_Concurrency string `json:"servicenumbr_concurrency,omitempty"`
+	ServiceNumbr_Podcount    string `json:"servicenumbr_podcount,omitempty"`
+	ActionValid              string `json:"actionvalid,omitempty"`
 }
 
 // DRLScaleActionStatus defines the observed state of DRLScaleAction

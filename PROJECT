@@ -4,7 +4,7 @@
 # More info: https://book.kubebuilder.io/reference/project-config.html
 domain: knativescaling.dcn.ssu.ac.kr
 layout:
-- go.kubebuilder.io/v3
+- go.kubebuilder.io/v4
 projectName: knative-drl-operator
 repo: github.com/mipearlska/knative_drl_operator
 resources:

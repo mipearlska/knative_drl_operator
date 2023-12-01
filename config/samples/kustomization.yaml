@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- drlscaling_v1_drlscaleaction.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples
