@@ -34,8 +34,6 @@ spec:
           spec:
             description: DRLScaleActionSpec defines the desired state of DRLScaleAction
             properties:
-              actionvalid:
-                type: string
               servicehouse_concurrency:
                 type: string
               servicehouse_podcount:
@@ -52,9 +50,9 @@ spec:
                 type: string
               servicesenti_concurrency:
                 type: string
-              servicesenti_resource:
+              servicesenti_podcount:
                 type: string
-              sservicesenti_podcount:
+              servicesenti_resource:
                 type: string
             type: object
           status:

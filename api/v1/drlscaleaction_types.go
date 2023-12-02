@@ -34,11 +34,10 @@ type DRLScaleActionSpec struct {
 	ServiceHouse_Podcount    string `json:"servicehouse_podcount,omitempty"`
 	ServiceSenti_Resource    string `json:"servicesenti_resource,omitempty"`
 	ServiceSenti_Concurrency string `json:"servicesenti_concurrency,omitempty"`
-	ServiceSenti_Podcount    string `json:"sservicesenti_podcount,omitempty"`
+	ServiceSenti_Podcount    string `json:"servicesenti_podcount,omitempty"`
 	ServiceNumbr_Resource    string `json:"servicenumbr_resource,omitempty"`
 	ServiceNumbr_Concurrency string `json:"servicenumbr_concurrency,omitempty"`
 	ServiceNumbr_Podcount    string `json:"servicenumbr_podcount,omitempty"`
-	ActionValid              string `json:"actionvalid,omitempty"`
 }
 
 // DRLScaleActionStatus defines the observed state of DRLScaleAction
