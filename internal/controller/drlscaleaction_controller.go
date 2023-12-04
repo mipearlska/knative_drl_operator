@@ -107,6 +107,9 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		loggerSD.Error(err, "unable to create Knative Serving Go Client")
 	}
 
+	//_________________________
+	//******SERVICE HOUSE******
+	//_________________________
 	//**Get current Service House Object + Info (Revision, Con, Res)
 	ServiceHouse, err := serving.Services("default").Get(ctx, sv_house_name, metav1.GetOptions{})
 	if err != nil {
@@ -126,6 +129,8 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if SV_House_Concurrency == ServiceHouse_Current_Con && SV_House_Resource == ConvertResourceLimitToString(ServiceHouse_Current_Res) {
 		loggerSD.Info("No change required for service House")
 	} else {
+		//// Set ResourceVersion of new Configuration to the current Service's ResourceVersion (Required for Update)
+		//// Call KnativeServingClient to create new Service Revision by updating current service with new Configuration
 		NewServiceHouseConfiguration = CreateNewSVHouseConfiguration(SV_House_Concurrency, SV_House_Resource, SV_House_PodNum)
 		NewServiceHouseConfiguration.SetResourceVersion(ServiceHouse.GetResourceVersion())
 		loggerSD.Info("New Configuration ", "house", SV_House_Concurrency, "-", SV_House_Resource, "-", SV_House_PodNum)
@@ -142,6 +147,9 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 	}
 
+	//_________________________
+	//******SERVICE SENTI******
+	//_________________________
 	//**Get current Service Senti Object + Info (Revision, Con, Res)
 	ServiceSenti, err := serving.Services("default").Get(ctx, sv_senti_name, metav1.GetOptions{})
 	if err != nil {
@@ -161,6 +169,8 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if SV_Senti_Concurrency == ServiceSenti_Current_Con && SV_Senti_Resource == ConvertResourceLimitToString(ServiceSenti_Current_Res) {
 		loggerSD.Info("No change required for service Senti")
 	} else {
+		//// Set ResourceVersion of new Configuration to the current Service's ResourceVersion (Required for Update)
+		//// Call KnativeServingClient to create new Service Revision by updating current service with new Configuration
 		NewServiceSentiConfiguration = CreateNewSVSentiConfiguration(SV_Senti_Concurrency, SV_Senti_Resource, SV_Senti_PodNum)
 		NewServiceSentiConfiguration.SetResourceVersion(ServiceSenti.GetResourceVersion())
 		loggerSD.Info("New Configuration ", "senti", SV_Senti_Concurrency, "-", SV_Senti_Resource, "-", SV_Senti_PodNum)
@@ -177,6 +187,9 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 	}
 
+	//_________________________
+	//******SERVICE NUMBR******
+	//_________________________
 	//**Get current Service Numbr Object + Info (Revision, Con, Res)
 	ServiceNumbr, err := serving.Services("default").Get(ctx, sv_numbr_name, metav1.GetOptions{})
 	if err != nil {
@@ -196,6 +209,8 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if SV_Numbr_Concurrency == ServiceNumbr_Current_Con && SV_Numbr_Resource == ConvertResourceLimitToString(ServiceNumbr_Current_Res) {
 		loggerSD.Info("No change required for service Numbr")
 	} else {
+		//// Set ResourceVersion of new Configuration to the current Service's ResourceVersion (Required for Update)
+		//// Call KnativeServingClient to create new Service Revision by updating current service with new Configuration
 		NewServiceNumbrConfiguration = CreateNewSVNumbrConfiguration(SV_Numbr_Concurrency, SV_Numbr_Resource, SV_Numbr_PodNum)
 		NewServiceNumbrConfiguration.SetResourceVersion(ServiceNumbr.GetResourceVersion())
 		loggerSD.Info("New Configuration ", "numbr", SV_Numbr_Concurrency, "-", SV_Numbr_Resource, "-", SV_Numbr_PodNum)
@@ -216,14 +231,9 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		loggerSD.Info(item)
 	}
 
-	//// Set ResourceVersion of new Configuration to the current Service's ResourceVersion (Required for Update)
-
-	//// Call KnativeServingClient to create new Service Revision by updating current service with new Configuration
-
 	// Watch New Revision,
 	// Wait until new Revision ready (Pod Running)
 	// Delete old Revision and the corresponding pods (to handle previous Revision long Terminating pods time, which can hold a lot of worker node resources)
-
 	// While Loop to wait until New Revision Pod Ready to serve
 
 	for {
@@ -235,38 +245,54 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 		count := make([]int, len(required_change_service_array))
 		newPodDeploy := make([]bool, len(required_change_service_array))
-		for _, pod := range BeforeDeleteRevisionPodList.Items {
-			for i := 0; i < len(required_change_service_array); i++ {
-				if strings.HasPrefix(pod.Name, required_change_service_array[i]) && pod.Status.Conditions[1].Status == "True" {
-					newPodDeploy[i] = true
-					count[i] += 1
-				} else if strings.HasPrefix(pod.Name, required_change_service_array[i]) && pod.Status.Conditions[1].Status != "True" {
-					newPodDeploy[i] = false // New Pod Not Ready, keep previous Revision alive
+		for i := 0; i < len(required_change_service_array); i++ {
+			for _, pod := range BeforeDeleteRevisionPodList.Items {
+				if strings.HasPrefix(pod.Name, required_change_service_array[i]) {
+					// Debug**loggerSD.Info(pod.Name)
+					// Debug**loggerSD.Info(string(pod.Status.Conditions[1].Status))
+					// Debug**loggerSD.Info(string(pod.Status.Conditions[2].Status))
+					if string(pod.Status.Conditions[1].Status) == "True" && string(pod.Status.Conditions[2].Status) == "True" {
+						newPodDeploy[i] = true
+						count[i] += 1
+					} else {
+						newPodDeploy[i] = false
+						break // Even 1 pod Not Ready = New Revision Not Ready, break the pod list loop.
+					}
 				}
 			}
 		}
+
+		// Debug**for i := 0; i < len(required_change_service_array); i++ {
+		// Debug**	loggerSD.Info("count", strconv.Itoa(i), count[i])
+		// Debug**	loggerSD.Info("newPodDeploy", strconv.Itoa(i), newPodDeploy[i])
+		// Debug**}
 
 		for i := 0; i < len(required_change_service_array); i++ {
-			if count[i] == 0 || !newPodDeploy[i] {
+			if count[i] == 0 { //No New Pods ready
 				loggerSD.Info("New Revision Pod NOT READY", "REV_NUMBER", i)
-			} else { // only when New Revision Pod Ready, process to Delete Previous Revision Pods step
-				loggerSD.Info("New Revision Pod Running", "REV_NUMBER", required_change_service_array[i])
-				if strings.HasPrefix(required_change_service_array[i], "deploy-a") {
-					loggerSD.Info("Wait")
-					time.Sleep(2 * time.Second)
-					DeleteRevisionAndPod(r, ctx, serving, old_revision_number_array[i])
-					required_change_service_array[i] = "done"
-					old_revision_number_array[i] = "done"
-				} else {
-					loggerSD.Info("Wait")
-					time.Sleep(2 * time.Second)
-					DeleteRevisionAndPod(r, ctx, serving, old_revision_number_array[i])
-					required_change_service_array[i] = "done"
-					old_revision_number_array[i] = "done"
+			} else { //Only SOME of the New Pods ready, not ALL
+				if !newPodDeploy[i] {
+					loggerSD.Info("New Revision Pod NOT READY", "REV_NUMBER", i)
+				} else { // only when New Revision Pod Ready, process to Delete Previous Revision Pods step
+					loggerSD.Info("New Revision Pod Running", "REV_NUMBER", required_change_service_array[i])
+					if strings.HasPrefix(required_change_service_array[i], "deploy-a") {
+						loggerSD.Info("Wait")
+						time.Sleep(3 * time.Second)
+						DeleteRevisionAndPod(r, ctx, serving, old_revision_number_array[i])
+						required_change_service_array[i] = "done"
+						old_revision_number_array[i] = "done"
+					} else {
+						loggerSD.Info("Wait")
+						time.Sleep(3 * time.Second)
+						DeleteRevisionAndPod(r, ctx, serving, old_revision_number_array[i])
+						required_change_service_array[i] = "done"
+						old_revision_number_array[i] = "done"
+					}
 				}
 			}
 		}
 
+		//**Remove from the service that already got its old revision deleted from the Required Revision Deletion Services List
 		temp_array1 := []string{}
 		temp_array2 := []string{}
 		for _, item3 := range required_change_service_array {
@@ -288,6 +314,7 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			loggerSD.Info(item)
 		}
 
+		//**When there are no service left in the Required Revision Deletion Services List, Break the Revision Deletion While loop (the biggest loop)
 		if len(required_change_service_array) == 0 {
 			break
 		}
