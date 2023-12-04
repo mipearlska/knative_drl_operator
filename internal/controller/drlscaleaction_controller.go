@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -68,6 +69,7 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	sv_numbr_name := "numberreg"
 
 	required_change_service_array := []string{}
+	old_revision_number_array := []string{}
 
 	// GetDRLScaleAction resource
 	var DRLScaleActionCRD = drlscalingv1.DRLScaleAction{}
@@ -124,7 +126,6 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if SV_House_Concurrency == ServiceHouse_Current_Con && SV_House_Resource == ConvertResourceLimitToString(ServiceHouse_Current_Res) {
 		loggerSD.Info("No change required for service House")
 	} else {
-		required_change_service_array = append(required_change_service_array, "deploy-a")
 		NewServiceHouseConfiguration = CreateNewSVHouseConfiguration(SV_House_Concurrency, SV_House_Resource, SV_House_PodNum)
 		NewServiceHouseConfiguration.SetResourceVersion(ServiceHouse.GetResourceVersion())
 		loggerSD.Info("New Configuration ", "house", SV_House_Concurrency, "-", SV_House_Resource, "-", SV_House_PodNum)
@@ -136,6 +137,8 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		} else {
 			loggerSD.Info("New Service Revision Created", "SERVICE", NewServiceHouseRevision.Name)
 			loggerSD.Info("New Service Revision Number", "REV_NUMBER", NewServiceHouseRevNumber)
+			required_change_service_array = append(required_change_service_array, NewServiceHouseRevNumber)
+			old_revision_number_array = append(old_revision_number_array, ServiceHouse_Current_Revision)
 		}
 	}
 
@@ -158,7 +161,6 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if SV_Senti_Concurrency == ServiceSenti_Current_Con && SV_Senti_Resource == ConvertResourceLimitToString(ServiceSenti_Current_Res) {
 		loggerSD.Info("No change required for service Senti")
 	} else {
-		required_change_service_array = append(required_change_service_array, "sentiment")
 		NewServiceSentiConfiguration = CreateNewSVSentiConfiguration(SV_Senti_Concurrency, SV_Senti_Resource, SV_Senti_PodNum)
 		NewServiceSentiConfiguration.SetResourceVersion(ServiceSenti.GetResourceVersion())
 		loggerSD.Info("New Configuration ", "senti", SV_Senti_Concurrency, "-", SV_Senti_Resource, "-", SV_Senti_PodNum)
@@ -170,6 +172,8 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		} else {
 			loggerSD.Info("New Service Revision Created", "SERVICE", NewServiceSentiRevision.Name)
 			loggerSD.Info("New Service Revision Number", "REV_NUMBER", NewServiceSentiRevNumber)
+			required_change_service_array = append(required_change_service_array, NewServiceSentiRevNumber)
+			old_revision_number_array = append(old_revision_number_array, ServiceSenti_Current_Revision)
 		}
 	}
 
@@ -192,7 +196,6 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if SV_Numbr_Concurrency == ServiceNumbr_Current_Con && SV_Numbr_Resource == ConvertResourceLimitToString(ServiceNumbr_Current_Res) {
 		loggerSD.Info("No change required for service Numbr")
 	} else {
-		required_change_service_array = append(required_change_service_array, "numberreg")
 		NewServiceNumbrConfiguration = CreateNewSVNumbrConfiguration(SV_Numbr_Concurrency, SV_Numbr_Resource, SV_Numbr_PodNum)
 		NewServiceNumbrConfiguration.SetResourceVersion(ServiceNumbr.GetResourceVersion())
 		loggerSD.Info("New Configuration ", "numbr", SV_Numbr_Concurrency, "-", SV_Numbr_Resource, "-", SV_Numbr_PodNum)
@@ -204,6 +207,8 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		} else {
 			loggerSD.Info("New Service Revision Created", "SERVICE", NewServiceNumbrRevision.Name)
 			loggerSD.Info("New Service Revision Number", "REV_NUMBER", NewServiceNumbrRevNumber)
+			required_change_service_array = append(required_change_service_array, NewServiceNumbrRevNumber)
+			old_revision_number_array = append(old_revision_number_array, ServiceNumbr_Current_Revision)
 		}
 
 	}
@@ -221,71 +226,72 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// While Loop to wait until New Revision Pod Ready to serve
 
-	// for {
-	// 	time.Sleep(1 * time.Second)
-	// 	BeforeDeleteRevisionPodList := &corev1.PodList{}
-	// 	if err := r.List(ctx, BeforeDeleteRevisionPodList); err != nil {
-	// 		loggerSD.Error(err, err.Error())
-	// 		break
-	// 	}
-	// 	count := 0
-	// 	newPodDeploy := false
-	// 	for _, pod := range BeforeDeleteRevisionPodList.Items {
-	// 		if strings.HasPrefix(pod.Name, New_Revision_Number) && pod.Status.Phase == "Running" {
-	// 			newPodDeploy = true // New Pod Not Ready, keep previous Revision alive
-	// 			count += 1
-	// 		} else if strings.HasPrefix(pod.Name, New_Revision_Number) && pod.Status.Phase != "Running" {
-	// 			newPodDeploy = false
-	// 		}
-	// 	}
-	// 	if count == 0 || !newPodDeploy {
-	// 		loggerSD.Info("New Revision Pod NOT READY", "REV_NUMBER", New_Revision_Number)
-	// 	} else { // only when New Revision Pod Ready, process to Delete Previous Revision Pods step
-	// 		loggerSD.Info("New Revision Pod Running")
-	// 		break
-	// 	}
-	// }
+	for {
+		time.Sleep(1 * time.Second)
+		BeforeDeleteRevisionPodList := &corev1.PodList{}
+		if err := r.List(ctx, BeforeDeleteRevisionPodList); err != nil {
+			loggerSD.Error(err, err.Error())
+			break
+		}
+		count := make([]int, len(required_change_service_array))
+		newPodDeploy := make([]bool, len(required_change_service_array))
+		for _, pod := range BeforeDeleteRevisionPodList.Items {
+			for i := 0; i < len(required_change_service_array); i++ {
+				if strings.HasPrefix(pod.Name, required_change_service_array[i]) && pod.Status.Conditions[1].Status == "True" {
+					newPodDeploy[i] = true
+					count[i] += 1
+				} else if strings.HasPrefix(pod.Name, required_change_service_array[i]) && pod.Status.Conditions[1].Status != "True" {
+					newPodDeploy[i] = false // New Pod Not Ready, keep previous Revision alive
+				}
+			}
+		}
 
-	// loggerSD.Info("Wait")
-	// time.Sleep(5 * time.Second)
+		for i := 0; i < len(required_change_service_array); i++ {
+			if count[i] == 0 || !newPodDeploy[i] {
+				loggerSD.Info("New Revision Pod NOT READY", "REV_NUMBER", i)
+			} else { // only when New Revision Pod Ready, process to Delete Previous Revision Pods step
+				loggerSD.Info("New Revision Pod Running", "REV_NUMBER", required_change_service_array[i])
+				if strings.HasPrefix(required_change_service_array[i], "deploy-a") {
+					loggerSD.Info("Wait")
+					time.Sleep(2 * time.Second)
+					DeleteRevisionAndPod(r, ctx, serving, old_revision_number_array[i])
+					required_change_service_array[i] = "done"
+					old_revision_number_array[i] = "done"
+				} else {
+					loggerSD.Info("Wait")
+					time.Sleep(2 * time.Second)
+					DeleteRevisionAndPod(r, ctx, serving, old_revision_number_array[i])
+					required_change_service_array[i] = "done"
+					old_revision_number_array[i] = "done"
+				}
+			}
+		}
 
-	// // New Revision Pods are READY now, Delete old Revision and old Revision pods
-	// // Check if old Revision Pods are still Terminating. If YES delete old Revision, Then Delete pod
-	// ReadyDeleteRevisionPodList := &corev1.PodList{}
-	// if err := r.List(ctx, ReadyDeleteRevisionPodList); err != nil {
-	// 	loggerSD.Error(err, err.Error())
-	// } else {
-	// 	count := 0 // count to ensure Delete Revision is only called one time in the PodList loop (when count = 1)
-	// 	for _, pod := range ReadyDeleteRevisionPodList.Items {
-	// 		if strings.HasPrefix(pod.Name, ServiceHouse_Current_Revision) {
-	// 			targetpod := &corev1.Pod{
-	// 				ObjectMeta: metav1.ObjectMeta{
-	// 					Namespace: "default",
-	// 					Name:      pod.Name,
-	// 				},
-	// 			}
-	// 			count += 1
-	// 			if count == 1 {
-	// 				loggerSD.Info("Ask to delete Revision", "REVISION_NAME", ServiceHouse_Current_Revision)
+		temp_array1 := []string{}
+		temp_array2 := []string{}
+		for _, item3 := range required_change_service_array {
+			if item3 != "done" {
+				temp_array1 = append(temp_array1, item3)
+			}
+		}
 
-	// 				err := serving.Revisions("default").Delete(context.Background(), ServiceHouse_Current_Revision, metav1.DeleteOptions{})
-	// 				if err != nil {
-	// 					loggerSD.Error(err, err.Error())
-	// 				} else {
-	// 					loggerSD.Info("Delete Revision ", "REVISION_NAME", ServiceHouse_Current_Revision)
-	// 				}
-	// 				time.Sleep(2 * time.Second)
-	// 			}
+		for _, item4 := range old_revision_number_array {
+			if item4 != "done" {
+				temp_array2 = append(temp_array2, item4)
+			}
+		}
 
-	// 			if err := r.Delete(ctx, targetpod, client.GracePeriodSeconds(0)); err != nil {
-	// 				loggerSD.Error(err, err.Error())
-	// 			} else {
-	// 				loggerSD.Info("Delete pod ", "POD_NAME", pod.Name)
-	// 			}
-	// 		}
-	// 	}
-	// }
-	// }
+		required_change_service_array = temp_array1
+		old_revision_number_array = temp_array2
+
+		for _, item := range required_change_service_array {
+			loggerSD.Info(item)
+		}
+
+		if len(required_change_service_array) == 0 {
+			break
+		}
+	}
 
 	return ctrl.Result{}, nil
 }
@@ -404,7 +410,7 @@ func CreateNewSVSentiConfiguration(con_value string, res_value string, podnumber
 									},
 									ReadinessProbe: &corev1.Probe{
 										PeriodSeconds:  13,
-										TimeoutSeconds: 13,
+										TimeoutSeconds: 15,
 									},
 								},
 							},
@@ -499,4 +505,43 @@ func CalculateNewRevisionNumber(service_name string, current_revision string) st
 	New_Revision_Number := service_name + "-" + strings.Repeat("0", 5-len(rev_number)) + rev_number
 
 	return New_Revision_Number
+}
+
+func DeleteRevisionAndPod(r *DRLScaleActionReconciler, ctx context.Context, serving *servingv1client.ServingV1Client, current_revision_name string) {
+	// New Revision Pods are READY now, Delete old Revision and old Revision pods
+	// Check if old Revision Pods are still Terminating. If YES delete old Revision, Then Delete pod
+	ReadyDeleteRevisionPodList := &corev1.PodList{}
+	if err := r.List(ctx, ReadyDeleteRevisionPodList); err != nil {
+		loggerSD.Error(err, err.Error())
+	} else {
+		count := 0 // count to ensure Delete Revision is only called one time in the PodList loop (when count = 1)
+		for _, pod := range ReadyDeleteRevisionPodList.Items {
+			if strings.HasPrefix(pod.Name, current_revision_name) {
+				targetpod := &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      pod.Name,
+					},
+				}
+				count += 1
+				if count == 1 {
+					loggerSD.Info("Ask to delete Revision", "REVISION_NAME", current_revision_name)
+
+					err := serving.Revisions("default").Delete(context.Background(), current_revision_name, metav1.DeleteOptions{})
+					if err != nil {
+						loggerSD.Error(err, err.Error())
+					} else {
+						loggerSD.Info("Delete Revision ", "REVISION_NAME", current_revision_name)
+					}
+					time.Sleep(2 * time.Second)
+				}
+
+				if err := r.Delete(ctx, targetpod, client.GracePeriodSeconds(0)); err != nil {
+					loggerSD.Error(err, err.Error())
+				} else {
+					loggerSD.Info("Delete pod ", "POD_NAME", pod.Name)
+				}
+			}
+		}
+	}
 }
