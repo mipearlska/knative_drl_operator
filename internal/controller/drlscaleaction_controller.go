@@ -121,12 +121,13 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	ServiceHouse_Current_Revision := ServiceHouse.Status.LatestReadyRevisionName
 	ServiceHouse_Current_Con := ServiceHouse.Spec.Template.ObjectMeta.Annotations["autoscaling.knative.dev/target"]
 	ServiceHouse_Current_Res := ServiceHouse.Spec.Template.Spec.Containers[0].Resources.Limits["cpu"]
+	ServiceHouse_current_Pod := ServiceHouse.Spec.Template.ObjectMeta.Annotations["autoscaling.knative.dev/min-scale"]
 
 	//**If different scaling configuration required, Create new service House Configuration
 	var NewServiceHouseConfiguration *servingv1.Service
 	var NewServiceHouseRevision *servingv1.Service
 	var NewServiceHouseRevNumber string
-	if SV_House_Concurrency == ServiceHouse_Current_Con && SV_House_Resource == ConvertResourceLimitToString(ServiceHouse_Current_Res) {
+	if SV_House_Concurrency == ServiceHouse_Current_Con && SV_House_Resource == ConvertResourceLimitToString(ServiceHouse_Current_Res) && SV_House_PodNum >= ServiceHouse_current_Pod {
 		loggerSD.Info("No change required for service House")
 	} else {
 		//// Set ResourceVersion of new Configuration to the current Service's ResourceVersion (Required for Update)
@@ -161,12 +162,13 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	ServiceSenti_Current_Revision := ServiceSenti.Status.LatestReadyRevisionName
 	ServiceSenti_Current_Con := ServiceSenti.Spec.Template.ObjectMeta.Annotations["autoscaling.knative.dev/target"]
 	ServiceSenti_Current_Res := ServiceSenti.Spec.Template.Spec.Containers[0].Resources.Limits["cpu"]
+	ServiceSenti_current_Pod := ServiceSenti.Spec.Template.ObjectMeta.Annotations["autoscaling.knative.dev/min-scale"]
 
 	//**If different scaling configuration required, Create new service Senti Configuration
 	var NewServiceSentiConfiguration *servingv1.Service
 	var NewServiceSentiRevision *servingv1.Service
 	var NewServiceSentiRevNumber string
-	if SV_Senti_Concurrency == ServiceSenti_Current_Con && SV_Senti_Resource == ConvertResourceLimitToString(ServiceSenti_Current_Res) {
+	if SV_Senti_Concurrency == ServiceSenti_Current_Con && SV_Senti_Resource == ConvertResourceLimitToString(ServiceSenti_Current_Res) && SV_Senti_PodNum == ServiceSenti_current_Pod {
 		loggerSD.Info("No change required for service Senti")
 	} else {
 		//// Set ResourceVersion of new Configuration to the current Service's ResourceVersion (Required for Update)
@@ -201,12 +203,13 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	ServiceNumbr_Current_Revision := ServiceNumbr.Status.LatestReadyRevisionName
 	ServiceNumbr_Current_Con := ServiceNumbr.Spec.Template.ObjectMeta.Annotations["autoscaling.knative.dev/target"]
 	ServiceNumbr_Current_Res := ServiceNumbr.Spec.Template.Spec.Containers[0].Resources.Limits["cpu"]
+	ServiceNumbr_current_Pod := ServiceNumbr.Spec.Template.ObjectMeta.Annotations["autoscaling.knative.dev/min-scale"]
 
 	//**If different scaling configuration required, Create new service Numbr Configuration
 	var NewServiceNumbrConfiguration *servingv1.Service
 	var NewServiceNumbrRevision *servingv1.Service
 	var NewServiceNumbrRevNumber string
-	if SV_Numbr_Concurrency == ServiceNumbr_Current_Con && SV_Numbr_Resource == ConvertResourceLimitToString(ServiceNumbr_Current_Res) {
+	if SV_Numbr_Concurrency == ServiceNumbr_Current_Con && SV_Numbr_Resource == ConvertResourceLimitToString(ServiceNumbr_Current_Res) && SV_Numbr_PodNum >= ServiceNumbr_current_Pod {
 		loggerSD.Info("No change required for service Numbr")
 	} else {
 		//// Set ResourceVersion of new Configuration to the current Service's ResourceVersion (Required for Update)
@@ -251,12 +254,14 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 					// Debug**loggerSD.Info(pod.Name)
 					// Debug**loggerSD.Info(string(pod.Status.Conditions[1].Status))
 					// Debug**loggerSD.Info(string(pod.Status.Conditions[2].Status))
-					if string(pod.Status.Conditions[1].Status) == "True" && string(pod.Status.Conditions[2].Status) == "True" {
-						newPodDeploy[i] = true
-						count[i] += 1
-					} else {
-						newPodDeploy[i] = false
-						break // Even 1 pod Not Ready = New Revision Not Ready, break the pod list loop.
+					if len(pod.Status.Conditions) >= 3 {
+						if string(pod.Status.Conditions[1].Status) == "True" && string(pod.Status.Conditions[2].Status) == "True" {
+							newPodDeploy[i] = true
+							count[i] += 1
+						} else {
+							newPodDeploy[i] = false
+							break // Even 1 pod Not Ready = New Revision Not Ready, break the pod list loop.
+						}
 					}
 				}
 			}
@@ -277,13 +282,13 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 					loggerSD.Info("New Revision Pod Running", "REV_NUMBER", required_change_service_array[i])
 					if strings.HasPrefix(required_change_service_array[i], "deploy-a") {
 						loggerSD.Info("Wait")
-						time.Sleep(3 * time.Second)
+						time.Sleep(1 * time.Second)
 						DeleteRevisionAndPod(r, ctx, serving, old_revision_number_array[i])
 						required_change_service_array[i] = "done"
 						old_revision_number_array[i] = "done"
 					} else {
 						loggerSD.Info("Wait")
-						time.Sleep(3 * time.Second)
+						time.Sleep(1 * time.Second)
 						DeleteRevisionAndPod(r, ctx, serving, old_revision_number_array[i])
 						required_change_service_array[i] = "done"
 						old_revision_number_array[i] = "done"
@@ -560,7 +565,7 @@ func DeleteRevisionAndPod(r *DRLScaleActionReconciler, ctx context.Context, serv
 					} else {
 						loggerSD.Info("Delete Revision ", "REVISION_NAME", current_revision_name)
 					}
-					time.Sleep(2 * time.Second)
+					time.Sleep(1 * time.Second)
 				}
 
 				if err := r.Delete(ctx, targetpod, client.GracePeriodSeconds(0)); err != nil {
