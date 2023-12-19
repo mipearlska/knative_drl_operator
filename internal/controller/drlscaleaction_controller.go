@@ -127,7 +127,7 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	var NewServiceHouseConfiguration *servingv1.Service
 	var NewServiceHouseRevision *servingv1.Service
 	var NewServiceHouseRevNumber string
-	if SV_House_Concurrency == ServiceHouse_Current_Con && SV_House_Resource == ConvertResourceLimitToString(ServiceHouse_Current_Res) && SV_House_PodNum >= ServiceHouse_current_Pod {
+	if SV_House_Concurrency == ServiceHouse_Current_Con && SV_House_Resource == ConvertResourceLimitToString(ServiceHouse_Current_Res) && SV_House_PodNum == ServiceHouse_current_Pod {
 		loggerSD.Info("No change required for service House")
 	} else {
 		//// Set ResourceVersion of new Configuration to the current Service's ResourceVersion (Required for Update)
@@ -209,7 +209,7 @@ func (r *DRLScaleActionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	var NewServiceNumbrConfiguration *servingv1.Service
 	var NewServiceNumbrRevision *servingv1.Service
 	var NewServiceNumbrRevNumber string
-	if SV_Numbr_Concurrency == ServiceNumbr_Current_Con && SV_Numbr_Resource == ConvertResourceLimitToString(ServiceNumbr_Current_Res) && SV_Numbr_PodNum >= ServiceNumbr_current_Pod {
+	if SV_Numbr_Concurrency == ServiceNumbr_Current_Con && SV_Numbr_Resource == ConvertResourceLimitToString(ServiceNumbr_Current_Res) && SV_Numbr_PodNum == ServiceNumbr_current_Pod {
 		loggerSD.Info("No change required for service Numbr")
 	} else {
 		//// Set ResourceVersion of new Configuration to the current Service's ResourceVersion (Required for Update)
@@ -429,7 +429,7 @@ func CreateNewSVSentiConfiguration(con_value string, res_value string, podnumber
 							Containers: []corev1.Container{
 								{
 									Name:  "sentiment",
-									Image: "mipearlska/sen_analysis_test:latest",
+									Image: "mipearlska/lstmsenti:latest",
 									Resources: corev1.ResourceRequirements{
 										Limits: map[corev1.ResourceName]resource.Quantity{
 											"cpu": resource.MustParse(res_value),
@@ -437,12 +437,12 @@ func CreateNewSVSentiConfiguration(con_value string, res_value string, podnumber
 									},
 									Ports: []corev1.ContainerPort{
 										{
-											ContainerPort: 9980,
+											ContainerPort: 6600,
 										},
 									},
 									ReadinessProbe: &corev1.Probe{
-										PeriodSeconds:  13,
-										TimeoutSeconds: 15,
+										PeriodSeconds:  1,
+										TimeoutSeconds: 1,
 									},
 								},
 							},
@@ -502,8 +502,8 @@ func CreateNewSVNumbrConfiguration(con_value string, res_value string, podnumber
 										},
 									},
 									ReadinessProbe: &corev1.Probe{
-										PeriodSeconds:  7,
-										TimeoutSeconds: 7,
+										PeriodSeconds:  1,
+										TimeoutSeconds: 1,
 									},
 								},
 							},
@@ -565,7 +565,7 @@ func DeleteRevisionAndPod(r *DRLScaleActionReconciler, ctx context.Context, serv
 					} else {
 						loggerSD.Info("Delete Revision ", "REVISION_NAME", current_revision_name)
 					}
-					time.Sleep(1 * time.Second)
+					time.Sleep(2 * time.Second)
 				}
 
 				if err := r.Delete(ctx, targetpod, client.GracePeriodSeconds(0)); err != nil {
