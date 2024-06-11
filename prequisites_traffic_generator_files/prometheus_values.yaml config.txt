@@ -1,0 +1,13 @@
+    additionalScrapeConfigs:
+      - job_name: "generator1"
+        scrape_interval: 2s
+        static_configs:
+        - targets: ["192.168.26.42:9646"]
+      - job_name: "generator2"
+        scrape_interval: 2s
+        static_configs:
+        - targets: ["192.168.26.20:9646"]
+      - job_name: "generator3"
+        scrape_interval: 2s
+        static_configs:
+        - targets: ["192.168.26.41:9646"]  

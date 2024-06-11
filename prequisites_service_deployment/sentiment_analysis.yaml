@@ -1,0 +1,32 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: sentiment
+  namespace: default
+  labels:
+    app: sentiment
+spec:
+  template:
+    metadata:
+      labels:
+        app: sentiment
+      annotations:
+        autoscaling.knative.dev/target: "20"
+        autoscaling.knative.dev/initial-scale: "2"
+        autoscaling.knative.dev/min-scale: "2"
+    spec:
+      containers:
+      - name: sentiment
+        image: mipearlska/lstmsenti:latest
+        resources:
+          requests:
+            #memory: "3000Mi"
+            #cpu: "500m"
+          limits:
+            #memory: "3000Mi"
+            cpu: "4000m"
+        ports:
+        - containerPort: 6600
+        readinessProbe:
+          periodSeconds: 1
+          timeoutSeconds: 1
