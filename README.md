@@ -1,10 +1,5 @@
-# knative-drl-operator
-// TODO(user): Add simple overview of use/purpose
-
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
-
-## Getting Started
+# Quota-based Knative Hybrid Autoscaling Operator
+as in https://doi.org/10.1016/j.future.2024.06.019
 
 ### Prerequisites
 - go version v1.20.0+
@@ -12,66 +7,52 @@
 - kubectl version v1.11.3+.
 - Access to a Kubernetes v1.11.3+ cluster.
 
-### To Deploy on the cluster
-**Build and push your image to the location specified by `IMG`:**
+## Getting Started
+You’ll need a Knative cluster to run against.
+**Note:** This operator was built and tested on: (Recommended for testing)
+- Ubuntu version 18.04.5/6
+- Kubernetes v1.23.5
+- Istio
+- Knative v1.8 (Serving and Eventing v1.8.5, Knative Istio Controller v1.8.0)
+For installing the above environment, please refer to knative_install.md file.
+
+
+### How it works
+This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
+
+It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/),
+which provide a reconcile function responsible for synchronizing resources until the desired state is reached on the cluster.
+
+### For Testing
+0. Kubectl apply the 3 target services as given in prequisites_service_deployment
+1. Delete any DRLScalingAction CR in cluster if running the test again from the beginning
+3. Run Locust Traffic Profile as given in prequisites_traffic_generator_files (Not generate traffic yet)
+4. Build and Install the CRDs into the cluster (Only first time)
 
 ```sh
-make docker-build docker-push IMG=<some-registry>/knative-drl-operator:tag
+make                              #make all
+make manifests                    #Generate CRD
+kubectl apply -f config/crd/bases #Apply CRD
 ```
 
-**NOTE:** This image ought to be published in the personal registry you specified. 
-And it is required to have access to pull the image from the working environment. 
-Make sure you have the proper permission to the registry if the above commands don’t work.
-
-**Install the CRDs into the cluster:**
+5. Run Quota-Based Knative HybridScaling controller (this will run in the foreground, so switch to a new terminal if you want to leave it running):
 
 ```sh
-make install
+make run
 ```
 
-**Deploy the Manager to the cluster with the image specified by `IMG`:**
+6. Start Generating Traffic to Service URL using Locust UI (HostURL:8089)
+**Note:** Traffic need to be predicted before the actual new traffic change happening
+- For example: Predict Traffic at every second 55 in a minute ("schedule.every().minute.at(":55").do(lambda: predict(api)")
+- Then Start Generating Traffic at second >= 00 (example predicting at 0:55, new traffic change at 1:00)
 
-```sh
-make deploy IMG=<some-registry>/knative-drl-operator:tag
-```
+7. Start Traffic Prediction Service (refer to https://github.com/mipearlska/Predictive_TrafficStatCRD for installation and running guide)
+- This service might take up until 1 minute to start up (loading libraries, etc.)
+- Recommended Running flow: Start Prediction service (running python3 main.py) at 0:40, Start Traffic Generation at 1:00
+- First Prediction will happen at 1:55, at 0:55 the Prediction service is still starting up
+- If your system startup the Prediction service fast, delay the Start Prediction service time to a later second (<55)
+- Reason: Prediction Service up before 0:55, first prediction happen at 0:55 while the traffic has not been generated yet (scheduled to start at 1:00)
 
-> **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin 
-privileges or be logged in as admin.
-
-**Create instances of your solution**
-You can apply the samples (examples) from the config/sample:
-
-```sh
-kubectl apply -k config/samples/
-```
-
->**NOTE**: Ensure that the samples has default values to test it out.
-
-### To Uninstall
-**Delete the instances (CRs) from the cluster:**
-
-```sh
-kubectl delete -k config/samples/
-```
-
-**Delete the APIs(CRDs) from the cluster:**
-
-```sh
-make uninstall
-```
-
-**UnDeploy the controller from the cluster:**
-
-```sh
-make undeploy
-```
-
-## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
-
-**NOTE:** Run `make --help` for more information on all potential `make` targets
-
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
 
 ## License
 
