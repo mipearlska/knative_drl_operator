@@ -46,7 +46,7 @@ make run
 - For example: Predict Traffic at every second 55 in a minute ("schedule.every().minute.at(":55").do(lambda: predict(api)")
 - Then Start Generating Traffic at second >= 00 (example predicting at 0:55, new traffic change at 1:00)
 
-7. Start Traffic Prediction Service (refer to https://github.com/mipearlska/Predictive_TrafficStatCRD for installation and running guide)
+7. Start DRL Agent Service (refer to https://github.com/mipearlska/DRL_knative_scale_limit_resources for installation and running guide)
 - This service might take up until 1 minute to start up (loading libraries, etc.)
 - Recommended Running flow: Start Prediction service (running python3 main.py) at 0:40, Start Traffic Generation at 1:00
 - First Prediction will happen at 1:55, at 0:55 the Prediction service is still starting up
